@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Study Flashcard &amp; Quiz Generator</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #070b1c;
+  --bg-1: #0b1230;
+  --card: rgba(15, 22, 48, 0.62);
+  --border: rgba(148, 163, 255, 0.18);
+  --border-strong: rgba(148, 163, 255, 0.42);
+  --text: #e8ecff;
+  --muted: #aab3d9;
+  --accent: #818cf8;
+  --cyan: #22d3ee;
+  --field: rgba(8, 12, 31, 0.68);
+}
+* { box-sizing: border-box; }
+
+/* ---------- Background: deep navy + soft gradient light ---------- */
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  background:
+    radial-gradient(1000px 640px at 8% -8%, rgba(99, 102, 241, 0.32), transparent 62%),
+    radial-gradient(860px 620px at 96% 4%, rgba(34, 211, 238, 0.17), transparent 60%),
+    radial-gradient(1000px 760px at 55% 112%, rgba(168, 85, 247, 0.22), transparent 62%),
+    linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 55%, #0a1028 100%);
+  background-color: var(--bg-0);
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+/* Tiny dots */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(165, 180, 252, 0.20) 1px, transparent 1.3px);
+  background-size: 28px 28px;
+}
+/* Soft blurred glow orbs that drift very slowly */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(420px 420px at 18% 28%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(360px 360px at 82% 62%, rgba(34, 211, 238, 0.14), transparent 70%),
+    radial-gradient(480px 480px at 40% 88%, rgba(168, 85, 247, 0.16), transparent 70%);
+  filter: blur(30px);
+  animation: orbFloat 26s ease-in-out infinite alternate;
+}
+@keyframes orbFloat {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(2.5%, -2%, 0) scale(1.06); }
+}
+
+/* ---------- Glass card around the whole workspace ---------- */
+main {
+  position: relative;
+  z-index: 1;
+  width: min(880px, calc(100% - 2rem));
+  margin: 2.25rem auto 3rem;
+  padding: 2.75rem 2.5rem 2.5rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow: 0 30px 80px -30px rgba(2, 6, 23, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  position: relative;
+  margin-bottom: 1.4rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+}
+.hero-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+}
+.hero-row { display: flex; align-items: center; gap: 1rem; margin: 1.1rem 0 0.7rem; }
+.hero-icon {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(34, 211, 238, 0.25));
+  border: 1px solid rgba(165, 180, 252, 0.4);
+  box-shadow: 0 10px 30px -8px rgba(99, 102, 241, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4.4vw, 2.75rem);
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  background: linear-gradient(92deg, #ffffff 8%, #c7d2fe 45%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero-sub { margin: 0.2rem 0 1rem; max-width: 38rem; color: var(--muted); font-size: 1.05rem; line-height: 1.6; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.hero-chips span {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #c7d2fe;
+  padding: 0.28rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+.hero-net { position: absolute; right: 0; top: -4px; width: 150px; opacity: 0.9; pointer-events: none; }
+
+/* ---------- Form fields ---------- */
+.field { margin-bottom: 1.2rem; }
+.label { display: block; margin-bottom: 0.45rem; color: #cdd5f7; font-size: 0.92rem; font-weight: 600; }
+textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 16px 18px;
+  resize: vertical;
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.65;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+textarea::placeholder { color: #8791bd; }
+textarea:hover { border-color: var(--border-strong); }
+textarea:focus {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.85);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18), 0 0 34px -4px rgba(99, 102, 241, 0.35);
+}
+
+/* PDF upload */
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.2rem;
+  cursor: pointer;
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.12), rgba(34, 211, 238, 0.05));
+  border: 1.5px dashed rgba(129, 140, 248, 0.6);
+  border-radius: 18px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.dropzone:hover, .dropzone:focus-within {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.10), 0 14px 40px -14px rgba(99, 102, 241, 0.55);
+}
+.dropzone input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.dropzone-text { color: var(--muted); font-size: 0.95rem; }
+.dropzone-text strong { color: var(--text); }
+.dropzone-btn {
+  padding: 0.5rem 1rem;
+  color: #e0e7ff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background: rgba(129, 140, 248, 0.16);
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  border-radius: 12px;
+}
+.clear-pdf {
+  margin-top: 0.5rem;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Select box and sliders */
+.controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; margin-bottom: 1.4rem; }
+select {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 0.9rem;
+  color: var(--text);
+  font: inherit;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+select:hover { border-color: var(--border-strong); }
+select option { background: #111936; }
+.slider-row { display: flex; align-items: center; gap: 0.75rem; min-height: 48px; }
+input[type="range"] { flex: 1; accent-color: var(--accent); }
+output { min-width: 2ch; color: #ffffff; font-weight: 700; text-align: right; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  padding: 0.7rem 1.7rem;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #06b6d4 140%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 10px 28px -10px rgba(99, 102, 241, 0.85);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.btn:hover { transform: translateY(-2px); filter: brightness(1.08); box-shadow: 0 16px 34px -10px rgba(99, 102, 241, 0.95); }
+.btn:disabled { opacity: 0.6; cursor: wait; transform: none; }
+.btn-outline {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0e7ff;
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  box-shadow: none;
+}
+.btn-outline:hover { background: rgba(129, 140, 248, 0.2); box-shadow: none; }
+button:focus-visible, select:focus-visible, input:focus-visible + .dropzone-btn {
+  outline: 2px solid #67e8f9;
+  outline-offset: 2px;
+}
+
+/* ---------- Section headings ---------- */
+h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 2rem 0 0.9rem;
+  color: #ffffff;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(129, 140, 248, 0.5), transparent); }
+
+/* ---------- Flashcards ---------- */
+.cards { display: grid; gap: 0.7rem; margin-bottom: 1rem; }
+details.card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+details.card:hover { transform: translateY(-2px); border-color: var(--border-strong); box-shadow: 0 14px 34px -16px rgba(99, 102, 241, 0.55); }
+details.card[open] { border-color: rgba(129, 140, 248, 0.5); }
+details.card summary { padding: 0.9rem 1.1rem; font-weight: 600; cursor: pointer; }
+details.card summary:hover { background: rgba(129, 140, 248, 0.08); }
+details.card p { margin: 0; padding: 0 1.1rem 1rem; color: #d6dcf7; line-height: 1.65; }
+
+/* ---------- Quiz ---------- */
+fieldset { margin: 0 0 1.3rem; padding: 0; border: 0; }
+legend { margin-bottom: 0.6rem; color: #ffffff; font-size: 1.02rem; font-weight: 600; line-height: 1.5; }
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+  padding: 0.65rem 0.95rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.option:hover { border-color: var(--border-strong); background: rgba(129, 140, 248, 0.1); }
+.option:has(input:checked) { background: rgba(99, 102, 241, 0.22); border-color: rgba(129, 140, 248, 0.75); }
+.option input { accent-color: var(--accent); }
+
+/* ---------- Messages ---------- */
+.alert { margin: 1rem 0; padding: 0.85rem 1rem; border-radius: 14px; border: 1px solid var(--border); line-height: 1.5; }
+.alert.success { background: rgba(16, 185, 129, 0.13); border-color: rgba(52, 211, 153, 0.4); }
+.alert.warning { background: rgba(245, 158, 11, 0.13); border-color: rgba(251, 191, 36, 0.4); }
+.alert.error { background: rgba(244, 63, 94, 0.13); border-color: rgba(251, 113, 133, 0.45); }
+.alert details { margin-top: 0.6rem; }
+.alert summary { cursor: pointer; color: var(--muted); }
+pre {
+  max-height: 300px;
+  overflow: auto;
+  padding: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: #0a0f26;
+  border-radius: 12px;
+}
+[hidden] { display: none !important; }
+
+/* Balloons for a perfect score */
+.balloon {
+  position: fixed;
+  bottom: -60px;
+  z-index: 10;
+  font-size: 2.2rem;
+  pointer-events: none;
+  animation: rise 4s ease-in forwards;
+}
+@keyframes rise { to { transform: translateY(-115vh); } }
+
+/* ---------- Phones and tablets ---------- */
+@media (max-width: 640px) {
+  main { width: calc(100% - 1.25rem); margin: 0.75rem auto 1.5rem; padding: 1.4rem 1.1rem; border-radius: 22px; }
+  .hero-row { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
+  .hero-icon { width: 54px; height: 54px; font-size: 1.7rem; }
+  .hero-net { display: none; }
+  .controls { grid-template-columns: 1fr; }
+  .btn { width: 100%; }
+}
+
+/* ---------- Respect "reduce motion" ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+  * { transition: none !important; }
+  .balloon { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <svg class="hero-net" viewBox="0 0 150 90" fill="none" aria-hidden="true">
+      <defs><linearGradient id="hn" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#818cf8"/><stop offset="1" stop-color="#22d3ee"/>
+      </linearGradient></defs>
+      <g stroke="url(#hn)" stroke-opacity=".55" stroke-width="1.2">
+        <path d="M12 62 L50 24 L92 52 L136 18"/><path d="M50 24 L64 80 L92 52"/><path d="M92 52 L132 70"/>
+      </g>
+      <g fill="url(#hn)"><circle cx="12" cy="62" r="4"/><circle cx="50" cy="24" r="5"/>
+        <circle cx="92" cy="52" r="5.5"/><circle cx="136" cy="18" r="4"/>
+        <circle cx="64" cy="80" r="3.5"/><circle cx="132" cy="70" r="3.5"/></g>
+    </svg>
+    <div class="hero-badge"><i></i>AI-powered study assistant</div>
+    <div class="hero-row">
+      <div class="hero-icon" aria-hidden="true">📚</div>
+      <h1>AI Study Flashcard &amp; Quiz Generator</h1>
+    </div>
+    <p class="hero-sub">Paste your notes or upload a PDF, and get flashcards and a quiz.</p>
+    <div class="hero-chips"><span>Flashcards</span><span>Multiple-choice quiz</span><span>PDF upload</span></div>
+  </header>
+
+  <div class="field">
+    <label class="label" for="notes">Paste your notes here</label>
+    <textarea id="notes" placeholder="e.g. Photosynthesis is how plants turn sunlight, water and CO2 into glucose and oxygen..."></textarea>
+  </div>
+
+  <div class="field">
+    <span class="label">📄 Or upload a PDF</span>
+    <label class="dropzone">
+      <input type="file" id="pdf" accept="application/pdf">
+      <span class="dropzone-text" id="pdf-name">Choose a PDF file <strong>(max 4 MB)</strong></span>
+      <span class="dropzone-btn">Browse files</span>
+    </label>
+    <button type="button" class="clear-pdf" id="clear-pdf" hidden>Remove PDF</button>
+  </div>
+
+  <div class="controls">
+    <div>
+      <label class="label" for="difficulty">Difficulty</label>
+      <select id="difficulty">
+        <option>Easy</option>
+        <option>Medium</option>
+        <option>Hard</option>
+      </select>
+    </div>
+    <div>
+      <label class="label" for="num-cards">Number of flashcards</label>
+      <div class="slider-row">
+        <input type="range" id="num-cards" min="3" max="20" value="8">
+        <output id="num-cards-value">8</output>
+      </div>
+    </div>
+    <div>
+      <label class="label" for="num-questions">Number of quiz questions</label>
+      <div class="slider-row">
+        <input type="range" id="num-questions" min="3" max="15" value="5">
+        <output id="num-questions-value">5</output>
+      </div>
+    </div>
+  </div>
+
+  <button type="button" class="btn" id="generate">Generate</button>
+  <div id="message" role="status" aria-live="polite"></div>
+
+  <section id="results" hidden>
+    <h2>🃏 Flashcards</h2>
+    <div class="cards" id="cards"></div>
+    <button type="button" class="btn btn-outline" id="download">Download flashcards</button>
+
+    <h2>📝 Quiz</h2>
+    <div id="quiz"></div>
+    <button type="button" class="btn" id="submit">Submit quiz</button>
+    <div id="score" role="status" aria-live="polite"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const MAX_PDF_BYTES = 4 * 1024 * 1024; // Vercel rejects uploads over about 4.5 MB
+let data = null;
+
+// Show a coloured message box. "raw" is the model's reply, shown for debugging.
+function showMessage(box, type, text, raw) {
+  box.innerHTML = "";
+  if (!text) return;
+  const div = document.createElement("div");
+  div.className = "alert " + type;
+  div.textContent = text;
+  if (raw) {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = "Raw model reply";
+    const pre = document.createElement("pre");
+    pre.textContent = raw;
+    details.append(summary, pre);
+    div.append(details);
+  }
+  box.append(div);
+}
+
+// Sliders: show the current number next to each slider
+for (const id of ["num-cards", "num-questions"]) {
+  $(id).addEventListener("input", () => { $(id + "-value").textContent = $(id).value; });
+}
+
+// PDF picker
+$("pdf").addEventListener("change", () => {
+  const file = $("pdf").files[0];
+  if (file && file.size > MAX_PDF_BYTES) {
+    $("pdf").value = "";
+    showMessage($("message"), "warning", "That PDF is too big (max 4 MB). Try a smaller file or paste the text instead.");
+  }
+  const chosen = $("pdf").files[0];
+  $("pdf-name").textContent = chosen ? "📎 " + chosen.name : "Choose a PDF file (max 4 MB)";
+  $("clear-pdf").hidden = !chosen;
+});
+$("clear-pdf").addEventListener("click", () => {
+  $("pdf").value = "";
+  $("pdf").dispatchEvent(new Event("change"));
+});
+
+// Generate: send the notes/PDF and settings to the Python API
+$("generate").addEventListener("click", async () => {
+  const notes = $("notes").value;
+  const pdf = $("pdf").files[0];
+  if (!notes.trim() && !pdf) {
+    showMessage($("message"), "warning", "Please paste some notes or upload a PDF first.");
+    return;
+  }
+
+  const form = new FormData();
+  form.append("notes", notes);
+  if (pdf) form.append("pdf", pdf);
+  form.append("difficulty", $("difficulty").value);
+  form.append("num_cards", $("num-cards").value);
+  form.append("num_questions", $("num-questions").value);
+
+  $("generate").disabled = true;
+  $("generate").textContent = "Thinking...";
+  showMessage($("message"), "", "");
+  try {
+    const res = await fetch("/api/generate", { method: "POST", body: form });
+    let reply;
+    try {
+      reply = await res.json();
+    } catch {
+      throw new Error("The server sent back an unexpected reply (status " + res.status + ").");
+    }
+    if (!res.ok) {
+      showMessage($("message"), "error", reply.error, reply.raw);
+      return;
+    }
+    data = reply;
+    showResults();
+  } catch (e) {
+    showMessage($("message"), "error", "Something went wrong. Click Generate again. (" + e.message + ")");
+  } finally {
+    $("generate").disabled = false;
+    $("generate").textContent = "Generate";
+  }
+});
+
+function showResults() {
+  // Flashcards: click a question to reveal the answer
+  $("cards").innerHTML = "";
+  for (const c of data.flashcards) {
+    const details = document.createElement("details");
+    details.className = "card";
+    const summary = document.createElement("summary");
+    summary.textContent = c.q;
+    const answer = document.createElement("p");
+    answer.textContent = c.a;
+    details.append(summary, answer);
+    $("cards").append(details);
+  }
+
+  // Quiz: one group of radio buttons per question
+  $("quiz").innerHTML = "";
+  data.quiz.forEach((q, i) => {
+    const fieldset = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.textContent = (i + 1) + ". " + q.q;
+    fieldset.append(legend);
+    q.options.forEach((option, j) => {
+      const label = document.createElement("label");
+      label.className = "option";
+      const radio = document.createElement("input");
+      radio.type = "radio";
+      radio.name = "q" + i;
+      radio.value = j;
+      label.append(radio, document.createTextNode(option));
+      fieldset.append(label);
+    });
+    $("quiz").append(fieldset);
+  });
+
+  showMessage($("score"), "", "");
+  $("results").hidden = false;
+  $("results").scrollIntoView({ behavior: "smooth" });
+}
+
+// Download the flashcards as a text file
+$("download").addEventListener("click", () => {
+  let cardsText = "";
+  for (const c of data.flashcards) {
+    cardsText += "Q: " + c.q + "\nA: " + c.a + "\n\n";
+  }
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([cardsText], { type: "text/plain" }));
+  link.download = "flashcards.txt";
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+
+// Score the quiz
+$("submit").addEventListener("click", () => {
+  let score = 0;
+  data.quiz.forEach((q, i) => {
+    const picked = document.querySelector(`input[name="q${i}"]:checked`);
+    if (picked && q.options[picked.value] === q.answer) score++;
+  });
+  showMessage($("score"), "success", `Your score: ${score}/${data.quiz.length}`);
+  if (score === data.quiz.length) balloons();
+});
+
+function balloons() {
+  for (let i = 0; i < 25; i++) {
+    const b = document.createElement("span");
+    b.className = "balloon";
+    b.textContent = "🎈";
+    b.style.left = Math.random() * 95 + "vw";
+    b.style.animationDelay = Math.random() * 1.5 + "s";
+    document.body.append(b);
+    setTimeout(() => b.remove(), 6000);
+  }
+}
+</script>
+</body>
+</html>
