@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ai-study-flashcard-quiz-generator
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # gunicorn runs the Flask "app" in app.py; --timeout gives Gemma time to reply
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: GEMINI_API_KEY
+        sync: false # Render asks you for the key when you create the service
